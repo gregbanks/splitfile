@@ -14,7 +14,7 @@ class Chunk(object):
     def __check_open(func):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
-            if self.closed or self._container.closed:
+            if self.closed:
                 raise ValueError('I/O operation on closed file')
             return func(self, *args, **kwargs)
         return wrapper
@@ -40,7 +40,7 @@ class Chunk(object):
 
     @property
     def closed(self):
-        return self._closed
+        return self._container.closed or self._closed
 
     def close(self):
         self._closed = True
