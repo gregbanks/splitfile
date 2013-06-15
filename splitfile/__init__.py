@@ -74,7 +74,7 @@ class SplitFile(Sequence):
 
     def __len__(self):
         return self.size // self._chunk_size + \
-                1 if self.size % self._chunk_size != 0 else 0
+                (1 if self.size % self._chunk_size != 0 else 0)
 
     def __contains__(self, item):
         pos = item.tell()

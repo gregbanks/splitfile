@@ -1,11 +1,27 @@
 import hashlib
 import math
 import os
+import random
+import re
+import shutil
+import string
+import sys
 
 from StringIO import StringIO
-from unittest import SkipTest
+from tempfile import mkstemp
+from unittest import SkipTest, TestCase
+
+try:
+    import boto
+    from boto.s3.connection import S3Connection
+    from boto.s3.key import Key
+    from boto.s3.exceptions import S3ResponseError
+    from boto.s3.multipart import MultiPartUpload
+except ImportError:
+    pass
 
 from . import BaseTest
+from splitfile import SplitFile
 
 
 class SplitFileTest(BaseTest):
@@ -131,4 +147,55 @@ class ChunkTest(BaseTest):
     # truncate tests
     def test_truncate_intermediate_chunk(self):
         raise SkipTest('not yet implemented')
+
+
+class BotoTest(BaseTest):
+    def setUp(self):
+        super(BotoTest, self).setUp()
+        if 'boto' not in globals():
+            raise SkipTest('boto pkg not found')
+        env_vars = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY',
+                    'SPLITFILE_TEST_BUCKET', 'SPLITFILE_LARGE_TEST_FILE']
+        if not all([v in os.environ for v in env_vars]):
+            raise SkipTest('the following environment variables must be set '
+                           'to run boto tests: %r' % (env_vars))
+
+        fd, temp_path = mkstemp()
+        shutil.copyfileobj(open(os.environ['SPLITFILE_LARGE_TEST_FILE']),
+                           os.fdopen(fd, 'w'))
+        self._split_file = SplitFile(temp_path, 6 * 2**20)
+
+        self.con = S3Connection()
+        self.bucket = self.con.create_bucket(os.environ['SPLITFILE_TEST_BUCKET'])
+        self.key_name = [random.choice(string.ascii_letters) for _ in xrange(16)]
+
+    def tearDown(self):
+        super(BotoTest, self).tearDown()
+        for k in self.bucket.list():
+            k.delete()
+        self.bucket.delete()
+
+    def test_multipart_upload(self):
+        upload = self.bucket.initiate_multipart_upload(self.key_name)
+        for i, chunk in enumerate(self._split_file):
+            upload.upload_part_from_file(chunk, i + 1)
+        upload.complete_upload()
+        fd, temp_path = mkstemp()
+        try:
+            with open(temp_path, 'w+') as download:
+                self.bucket.get_key(
+                    self.key_name).get_contents_to_file(download)
+                sf_hash = hashlib.md5()
+                for c in self._split_file:
+                    sf_hash.update(c.read())
+                download.seek(0)
+                dl_hash = hashlib.md5()
+                while True:
+                    data = download.read(2**20)
+                    if not data:
+                        break
+                    dl_hash.update(data)
+            self.assertEqual(dl_hash.digest(), sf_hash.digest())
+        finally:
+            os.unlink(temp_path)
 
