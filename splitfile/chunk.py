@@ -30,7 +30,7 @@ class Chunk(object):
     def __iter__(self):
         self.seek(0)
         return self
-    
+
     @property
     @__check_open
     def md5(self):

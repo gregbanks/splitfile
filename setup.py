@@ -26,7 +26,7 @@ setup(name='splitfile',
                   'chunks, where each of those chunks is a file like object '
                   'itself.',
       setup_requires=['rexparse'],
-      dependency_links=['https://github.com/gregbanks/rexparse#egg=rexparse'],
+      dependency_links=['https://github.com/gregbanks/rexparse/archive/master.zip#egg=rexparse'],
       rexparse={'requirements_path': get_path('requirements.txt'),
                 'version_path': get_path('splitfile', '_version.py')},
       test_suite='nose.collector',
