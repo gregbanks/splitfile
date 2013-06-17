@@ -77,15 +77,10 @@ class SplitFile(Sequence):
                 (1 if self.size % self._chunk_size != 0 else 0)
 
     def __contains__(self, item):
-        pos = item.tell()
-        try:
-            item.seek(0)
-            data = item.read()
-            for chunk in self:
-                if data == chunk.read():
-                    return True
-        finally:
-            item.seek(pos)
+        item_md5 = item.md5
+        for chunk in self:
+            if chunk.md5 == item_md5:
+                return True
         return False
 
     @property

@@ -7,7 +7,7 @@ from unittest import TestCase
 from splitfile import SplitFile
 
 
-data_path = os.path.join(os.path.dirname(__file__), 'data', 'test.bin')
+data_path = os.path.join(os.path.dirname(__file__), 'data')
 
 
 class BaseTest(TestCase):
@@ -15,7 +15,7 @@ class BaseTest(TestCase):
 
     def setUp(self):
         fd, temp_path = mkstemp()
-        shutil.copyfileobj(open(data_path), os.fdopen(fd, 'w'))
+        shutil.copyfileobj(open(os.path.join(data_path, 'test.bin')), os.fdopen(fd, 'w'))
         self._split_file = SplitFile(temp_path, self.__class__.chunk_size)
 
     def tearDown(self):

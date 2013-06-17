@@ -20,7 +20,7 @@ try:
 except ImportError:
     pass
 
-from . import BaseTest
+from . import BaseTest, data_path
 from splitfile import SplitFile
 
 
@@ -79,6 +79,13 @@ class SplitFileTest(BaseTest):
                              (count * self._split_file.chunk_size),
                              self._split_file.bytes_remaining)
             count += 1
+
+    def test_contains(self):
+        chunk = self._split_file[2]
+        self.assertTrue(chunk in self._split_file)
+        other_file = SplitFile(os.path.join(data_path, 'test2.bin'),
+                               self.__class__.chunk_size)
+        self.assertFalse(other_file[2] in self._split_file)
 
 
 class ChunkTest(BaseTest):

@@ -1,9 +1,12 @@
 import os
+import hashlib
 
 from functools import wraps
 
 
 class Chunk(object):
+    hash_chunk_size = 8192
+
     def __init__(self, container):
         self._container = container
         self._size = min(container.chunk_size, container.bytes_remaining)
@@ -27,6 +30,21 @@ class Chunk(object):
     def __iter__(self):
         self.seek(0)
         return self
+    
+    @property
+    @__check_open
+    def md5(self):
+        pos = self.tell()
+        try:
+            self.seek(0)
+            hash_ = hashlib.md5()
+            data = self.read(self.__class__.hash_chunk_size)
+            while data:
+                hash_.update(data)
+                data = self.read(self.__class__.hash_chunk_size)
+            return hash_.hexdigest()
+        finally:
+            self.seek(pos)
 
     @property
     @__check_open
