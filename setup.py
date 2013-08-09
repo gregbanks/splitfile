@@ -8,9 +8,9 @@ from setuptools import setup, find_packages
 
 # NOTE: http://bugs.python.org/issue15881#msg170215
 try:
-        import multiprocessing
+    import multiprocessing
 except ImportError:
-        pass
+    pass
 
 
 get_path = partial(os.path.join,  os.path.dirname(os.path.abspath(__file__)))
