@@ -1,5 +1,10 @@
-import os
+from __future__ import (
+    absolute_import, division, print_function, unicode_literals
+)
+
 import hashlib
+import logging
+import os
 
 from functools import wraps
 
@@ -18,6 +23,7 @@ class Chunk(object):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
             if self.closed:
+                # standard error returned for operations on closed files
                 raise ValueError('I/O operation on closed file')
             return func(self, *args, **kwargs)
         return wrapper
@@ -30,6 +36,18 @@ class Chunk(object):
     def __iter__(self):
         self.seek(0)
         return self
+
+    @__check_open
+    def __next__(self):
+        pos = self.tell()
+        if pos < self._size:
+            line = self._container.file.readline(self.bytes_remaining)
+            if line != '':
+                return line
+        raise StopIteration()
+
+    def next(self):
+        return self.__next__()
 
     @property
     @__check_open
@@ -64,15 +82,6 @@ class Chunk(object):
         self._closed = True
 
     @__check_open
-    def next(self):
-        pos = self.tell()
-        if pos < self._size:
-            line = self._container.file.readline(self.bytes_remaining)
-            if line != '':
-                return line
-        raise StopIteration()
-
-    @__check_open
     def read(self, size=-1):
         size = self.bytes_remaining if size < 0 else size
         return self._container.file.read(min(size, self.bytes_remaining))
@@ -98,7 +107,13 @@ class Chunk(object):
         return iter(self)
 
     @__check_open
+    def seekable(self):
+        return self._container.seekable()
+
+    @__check_open
     def seek(self, offset, whence=os.SEEK_SET):
+        if not self.seekable():
+            raise IOError('file is not seekable')
         if whence == os.SEEK_SET:
             if offset < 0:
                 raise IOError('invalid argument')
