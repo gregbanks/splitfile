@@ -175,11 +175,12 @@ class BotoTest(TestCase):
             raise SkipTest('the following environment variables must be set '
                            'to run boto tests: %r' % (env_vars))
 
-        fd, temp_path = mkstemp()
+        bin_fd = None
         try:
+            bin_fd, temp_path = mkstemp()
             shutil.copyfileobj(io.open(os.environ['SPLITFILE_LARGE_TEST_FILE'],
                                        'rb'),
-                               io.open(fd, 'wb'))
+                               io.open(bin_fd, 'wb', closefd=False))
 
             self._bin_split_file = SplitFile(temp_path, 6 * 2**20, 'rb+')
             self.split_file = self._bin_split_file
@@ -188,16 +189,19 @@ class BotoTest(TestCase):
             self.bucket = \
                 self.con.create_bucket(os.environ['SPLITFILE_TEST_BUCKET'])
             self.key_name = \
-                [random.choice(string.ascii_letters) for _ in range(16)]
+                ''.join([random.choice(string.ascii_letters)
+                         for _ in range(16)])
         finally:
-            os.close(fd)
+            if bin_fd is not None:
+                os.close(bin_fd)
 
     def tearDown(self):
         for k in self.bucket.list():
             k.delete()
-        self.bucket.delete()
+        if os.environ.get('SPLITFILE_DELETE_TEST_BUCKET', False):
+            self.bucket.delete()
         self._bin_split_file.close()
-        os.close(self._bin_split_file.file.name)
+        os.unlink(self._bin_split_file.file.name)
 
     def test_multipart_upload(self):
         upload = self.bucket.initiate_multipart_upload(self.key_name)
